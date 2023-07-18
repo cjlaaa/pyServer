@@ -19,7 +19,7 @@ def client_program():
         # 创建一个空的 protobuf 对象
         message = UserMsg_pb2.C2SLogin()
         # 设置 protobuf 对象的字段
-        message.Account = "cjlaaa"+str(i)
+        message.Account = "cjlaaa" + str(i)
 
         # 序列化 protobuf 对象
         proto_msg = message.SerializeToString()
@@ -48,8 +48,10 @@ def client_program():
 
         received_proto_obj = UserMsg_pb2.S2CLogin()
         received_proto_obj.ParseFromString(received_message)
-        print(received_message_type, received_message_length, received_proto_obj)
-
+        print(
+            received_message_type,
+            received_message_length,
+            received_proto_obj)
 
         # 关闭套接字连接
         client_socket.close()
