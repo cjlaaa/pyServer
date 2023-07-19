@@ -102,6 +102,7 @@ def read(conn, mask):
     except Exception as e:
         logging.debug(f"异常: {e}")
         traceback.print_exc()
+        disconnect(conn)
         return
 
 
