@@ -1,10 +1,11 @@
 import logging
 import socket
 import struct
-import threading
 from msg import UserMsg_pb2
-import traceback
+from msg import ProtoType_pb2
 import selectors
+
+ERROR_CODE = -999999
 
 # 定义服务器地址和端口
 SERVER_HOST = '0.0.0.0'
@@ -12,11 +13,10 @@ SERVER_PORT = 12345
 
 # 定义客户端列表
 connections = {}
-
+# 定义一个字典，将枚举值与对应的处理函数关联起来
+network_handlers = {}
+#
 sel = selectors.DefaultSelector()
-
-# 循环计数
-global_count = 0
 
 
 # 处理连接断开
@@ -43,7 +43,7 @@ def accept(sock, mask):
 def recv_and_unpack(conn):
     header = conn.recv(8)
     if not header:
-        return -1, bytes()
+        return ERROR_CODE, bytes()
 
     header_format = 'ii'  # 消息类型和消息长度都是4字节的整数
     unpacked_header = struct.unpack(header_format, header)
@@ -70,47 +70,21 @@ def pack_and_send(conn, message_type, response_message):
 def read(conn, mask):
     try:
         received_message_type, received_message = recv_and_unpack(conn)
-        if received_message_type <= 0:
+        if received_message_type == ERROR_CODE:
             # 连接断开
             disconnect(conn)
             return
 
-        # 处理登录请求
-        if received_message_type == 1:
-            # 解析protobuf消息
-            msg = UserMsg_pb2.C2SLogin()
-            msg.ParseFromString(received_message)
-
-            # 获取用户名
-            account = msg.Account
-            connections[conn] = account
-            logging.debug(f"用户{account}已登录")
-
-            # 发送登录成功响应
-            response_message = UserMsg_pb2.S2CLogin()
-            response_message.Res = 999
-            response_message.Message = "Hey you!" + account
-            response_message.PlayerId = 123456
-
-            pack_and_send(conn, 9999, response_message)
-
-        # 处理其他请求
-        elif received_message_type == 2:
-            # 解析protobuf消息
-            # msg = UserMsg_pb2.C2SLogin()
-            # msg.ParseFromString(received_message)
-
-            # # 广播消息给所有客户端
-            # with lock:
-            #     for client in clients:
-            #         client.send(message.encode())
-            pass
+        handler = network_handlers.get(received_message_type)
+        if handler:
+            handler(conn, received_message)
         else:
             raise Exception(
                 "收到错误的包",
                 received_message_type,
                 # received_message_length,
                 received_message)
+
     except socket.error as e:
         if e.errno == 10054:
             logging.debug(f"socket异常: {e}")
@@ -121,9 +95,43 @@ def read(conn, mask):
         disconnect(conn)
         return
     except Exception as e:
-        logging.debug(f"异常: {e}")
+        logging.debug(f"其他异常: {e}")
         disconnect(conn)
         return
+
+
+# 定义一个函数，用于注册网络处理函数
+def register_network_handler(protocol, handler):
+    network_handlers[protocol] = handler
+
+
+# 注册网络处理函数
+def init_network_handler():
+    register_network_handler(ProtoType_pb2.MSGTYPE.MT_C2S_LOGIN, s2c_login)
+    # register_network_handler(NetworkProtocol.TCP, process_tcp)
+    # register_network_handler(NetworkProtocol.UDP, process_udp)
+
+
+def s2c_login(conn, received_message):
+    # 解析protobuf消息
+    msg = UserMsg_pb2.C2SLogin()
+    msg.ParseFromString(received_message)
+
+    # 获取用户名
+    account = msg.Account
+    connections[conn] = account
+    logging.debug(f"用户{account}已登录")
+
+    # 发送登录成功响应
+    response_message = UserMsg_pb2.S2CLogin()
+    response_message.Res = 999
+    response_message.Message = "Hey you!" + account
+    response_message.PlayerId = 123456
+
+    pack_and_send(
+        conn,
+        ProtoType_pb2.MSGTYPE.MT_S2C_LOGIN,
+        response_message)
 
 
 def main():
@@ -134,6 +142,8 @@ def main():
     logging.basicConfig(
         level=logging.ERROR,
         format='%(asctime)s [%(levelname)s]:%(message)s(%(filename)s:%(lineno)d)')
+
+    init_network_handler()
 
     # 创建服务器socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

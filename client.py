@@ -5,6 +5,7 @@ import threading
 import time
 
 from msg import UserMsg_pb2
+from msg import ProtoType_pb2
 
 # 服务器的IP地址和端口号
 server_ip = '127.0.0.1'
@@ -31,7 +32,7 @@ def connect_to_server():
 
     # 定义包头格式
     header_format = 'ii'  # 消息类型和消息长度都是4字节的整数,后面为了测试又加了一个整数
-    message_type = 1
+    message_type = ProtoType_pb2.MSGTYPE.MT_C2S_LOGIN
     # 将消息类型和包体长度打包成字节对象
     header = struct.pack(header_format, message_type, message_length)
 
@@ -63,7 +64,7 @@ def connect_to_server():
 
 # 创建多个线程并连接到服务器
 def create_threads():
-    for _ in range(5):  # 创建5个线程
+    for _ in range(1):  # 创建5个线程
         threading.Thread(target=connect_to_server).start()
 
 
