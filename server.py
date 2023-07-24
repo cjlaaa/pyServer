@@ -1,9 +1,11 @@
 import logging
+import selectors
 import socket
 import struct
-from msg import UserMsg_pb2
+from colorama import Fore, Style
+
 from msg import ProtoType_pb2
-import selectors
+from msg import UserMsg_pb2
 
 ERROR_CODE = -999999
 
@@ -138,10 +140,10 @@ def main():
     # 设置日志格式
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s [%(levelname)s]:%(message)s(%(filename)s:%(lineno)d)')
+        format=f'{Fore.GREEN}%(asctime)s [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d){Style.RESET_ALL}')
     logging.basicConfig(
         level=logging.ERROR,
-        format='%(asctime)s [%(levelname)s]:%(message)s(%(filename)s:%(lineno)d)')
+        format=f'{Fore.RED}%(asctime)s [%(levelname)s]: %(message)s(% (filename)s:%(lineno)d){Style.RESET_ALL}')
 
     init_network_handler()
 
