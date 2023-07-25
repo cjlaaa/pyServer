@@ -51,7 +51,27 @@ def recv_and_unpack(conn):
     unpacked_header = struct.unpack(header_format, header)
     received_message_type = unpacked_header[0]
     received_message_length = unpacked_header[1]
-    received_message = conn.recv(received_message_length)
+    # received_message = conn.recv(received_message_length)
+
+    # 检查消息长度是否合理
+    if 0 < received_message_length <= 40960:
+        # 接收消息体
+        received_message = b""
+        bytes_to_receive = received_message_length
+        buffer_size = 1024  # 每次接收的缓冲区大小
+        while bytes_to_receive > 0:
+            if bytes_to_receive < buffer_size:
+                chunk = conn.recv(bytes_to_receive)
+            else:
+                chunk = conn.recv(buffer_size)
+            if not chunk:
+                # 连接已关闭，退出循环
+                break
+            received_message += chunk
+            bytes_to_receive -= len(chunk)
+    else:
+        # 消息长度不合理，进行处理（例如抛出异常）
+        raise ValueError(f"消息长度不合理:{received_message_length}")
 
     return received_message_type, received_message
 
